@@ -47,10 +47,10 @@ function getRandomArbitrary(min, max) {
 let clock
 const awake = () => {
   clock = setTimeout(() => {
-    http.get(process.env.URL);
+    https.get(process.env.URL);
     clearTimeout(clock)
     awake()
-  }, Math.ceil(getRandomArbitrary(4, 5) * 60000))
+  }, Math.ceil(getRandomArbitrary(1, 3) * 60000))
 }
 
 awake()
