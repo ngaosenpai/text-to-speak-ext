@@ -1,5 +1,5 @@
 console.log("ok")
-const url = "http://localhost:3000"
+const url = "https://lalang-haole.herokuapp.com"
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const ctx = new AudioContext();
 

@@ -4,6 +4,7 @@ const app = express()
 const port = 3000
 const cors = require('cors')
 const http = require("http");
+const https = require('https')
 
 if(process.env.NODE_ENV != "production"){
   require("dotenv").config()
@@ -22,6 +23,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/ran', (req, res) => {
+  console.log("call awake")
   res.json({ data: Math.random() })
 })
 
