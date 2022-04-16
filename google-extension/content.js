@@ -3,10 +3,21 @@ const url = "https://lalang-haole.herokuapp.com"
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const ctx = new AudioContext();
 
+/* 
+ User select text => show popup
+ User click `la lang` => call api, set isReading true
+ User click `la lang` while isReading is true => alert error
+ User click `x`. stop the reading and delete popup
+
+*/
+
 const controller = {
   popup : null,
   data : "",
   lang : "vi",
+  isReading: false,
+  isFetching: false,
+  player: null,
   setPopup(node){
     if(node instanceof Element){
       this.popup = node
@@ -23,14 +34,18 @@ const controller = {
   controlBtns : [], /* start/stop btn, 3 speed btn (1x, 1.25x, 1.5x) */
 }
 
-const btnCss = `
-  background-color: #bb53ff;
+const shareBtnCss = `
   border: 2px solid black;
   border-radius: 5px;
   font-weight: bold;
   margin: 0 2px;
   z-index: 1000
 `
+const pupleBtn = `
+  background-color: #bb53ff;
+`
+
+const btnCss = shareBtnCss + pupleBtn
 
 // utils function
 const createElement = (tagName, children, cssText, options=null) => {
@@ -72,16 +87,25 @@ const render = node => document.getElementsByTagName("body")[0].appendChild(node
 
 // components
 
-// main btn
-const startOrStop = createElement(
+// start btn
+const startBtn = createElement(
   'button',
   'La làng',
   btnCss
 )
-startOrStop.addEventListener("click", function(e){
-  console.log("La lang btn clicked")
-  console.log(`lang: ${controller.lang} \n data: ${controller.data}`)
+startBtn.addEventListener("click", function(e){
+  // should click?
+  if(controller.isReading){
+    alert("Đang la làng! Vui lòng cho tui nín rồi tui la làng cái khác cho :D")
+    return
+  }
+  if(controller.isFetching){
+    alert("Đợi xíu uống miếng nước rồi la cho nghe ;P")
+    return
+  }
 
+  // start fetch
+  controller.isFetching = true
   // send to server
   fetch(`${url}/to-speak/${controller.lang}`, {
     method: "POST",
@@ -93,28 +117,44 @@ startOrStop.addEventListener("click", function(e){
   .then(res => res.arrayBuffer())
   .then(data => ctx.decodeAudioData(data))
   .then(decodedAudio => {
+    // set isReading -> true
+    controller.isReading = true
+
+    // start reading
     const player = ctx.createBufferSource()
+    controller.player = player
     player.buffer = decodedAudio
     player.connect(ctx.destination)
     player.start(ctx.currentTime)
+
+    // stop fetch
+    controller.isFetching = false
+  })
+  .catch(error => {
+    console.log(error)
+    controller.isFetching = false
+    controller.player = null
   })
 
-  // delete Element if exist
-  const E = controller.getPopup()
-  if(E){
-    E.parentNode.removeChild(E)
-    controller.deletePopup()
-  }
 }, true)
 // 
 
 
 // speed controller
-const [normalSpeed, mediumSpeed, fastSpeed] = ['1x', '1.25x', '1.5x'].map(name => createElement(
-  'button',
-  name,
-  btnCss
-))
+const [normalSpeed, mediumSpeed, fastSpeed] = [1.0, 1.25, 1.5].map(speed => {
+  const speedBtn = createElement(
+    'button',
+    `${speed}x`,
+    btnCss
+  )
+  speedBtn.addEventListener("click", function(e){
+    if(controller.player){
+      controller.player.playbackRate.value = speed
+    }
+  }, true)
+
+  return speedBtn
+})
 // 
 
 // select btn
@@ -138,20 +178,38 @@ const selector = createElement(
 selector.addEventListener('change', function(e){
   controller.lang = e.target.value
 })
+// 
+
+// stop btn
+const stopBtn = createElement(
+  'button',
+  'Nín',
+  btnCss
+)
+
+stopBtn.addEventListener("click", function(e){
+// step:
+  // stop Audio Context
+  // set isReading -> false
+  // delete popup
+
+// implement:
+  if(controller.player){
+    controller.player.stop()
+    controller.isReading = false
+  }
+
+  // delete Element if exist
+  const E = controller.getPopup()
+  if(E){
+    E.parentNode.removeChild(E)
+    controller.deletePopup()
+  }
+}, true)
 
 
-// functions
 
-// this function should be change
-
-// document.addEventListener('mousedown', e => {
-//   // delete Element if exist
-//   const E = controller.getPopup()
-//   if(E){
-//     E.parentNode.removeChild(E)
-//     controller.deletePopup()
-//   }
-// })
+// window functions
 
 document.addEventListener('mouseup', function(event){
   if(!controller.getPopup()){
@@ -173,7 +231,7 @@ document.addEventListener('mouseup', function(event){
       // create element and render
       const E = createElement(
         "div", 
-        [selector, startOrStop, normalSpeed, mediumSpeed, fastSpeed], 
+        [selector, startBtn, stopBtn, normalSpeed, mediumSpeed, fastSpeed], 
         `
           position: absolute; top: ${10 + y + document.documentElement.scrollTop}px; 
           left: ${x}px; z-index: 999; padding: 5px; border-radius: 5px;
